@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - 医院管理系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card mt-5">
+                <div class="card-header">
+                    <h3 class="text-center">用户登录</h3>
+                </div>
+                <div class="card-body">
+                    <form id="loginForm" method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">密码</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">登录</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/users/login/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.detail === "User authenticated successfully") {
+            window.location.href = '/';  // 登录成功后跳转到首页
+        } else {
+            alert('登录失败：' + data.detail);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('登录过程中发生错误');
+    });
+});
+</script>
+{% endblock %} 
