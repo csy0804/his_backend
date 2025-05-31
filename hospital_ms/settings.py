@@ -130,9 +130,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = 'zh-hans'  # ✅ 设置默认语言为简体中文
 
-TIME_ZONE = os.getenv("TIME_ZONE", "Africa/Nairobi")
+TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Shanghai")  # 使用中国标准时间
 
 USE_I18N = True
 

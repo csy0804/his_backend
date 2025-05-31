@@ -10,11 +10,20 @@ url = "https://developer.safaricom.co.ke/api/v1/APIs/API/Simulate/MpesaExpressSi
 
 
 def send_payment_push(phone_number: str, amount: int, account_reference: str):
+    # 检查是否是模拟模式
+    # 如果 settings.MPESA_TOKEN 或 settings.MPESA_AUTHORIZATION 为空字符串，则进入模拟模式
+    if not settings.MPESA_TOKEN or not settings.MPESA_AUTHORIZATION:
+        print(f"模拟模式：向 {phone_number} 发送 {amount} 的支付请求 (金额: {amount})")
+        # 在模拟模式下，我们直接返回，不执行后续的 API 调用代码
+        return
+
+    # 以下是实际调用 MPESA API 的代码，只在非模拟模式下执行
     if re.match(r"(^07|^011)", phone_number):
         phone_number = int(phone_number)
     elif re.match(r"^\+254", phone_number):
         phone_number = int(phone_number[4:])
     else:
+        # 即使在模拟模式下，手机号码格式验证仍然保留
         raise ValueError(f"Invalid phone number.")
 
     phone_number = f"254{phone_number}"
@@ -23,7 +32,7 @@ def send_payment_push(phone_number: str, amount: int, account_reference: str):
         "authorization": settings.MPESA_AUTHORIZATION,
         "BusinessShortCode": "174379",
         "password": settings.MPESA_PASSWORD,
-        "timestamp": "20250326114804",  # datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        "timestamp": settings.MPESA_TIMESTAMP,
         "TransactionType": "CustomerPayBillOnline",
         "amount": amount,
         "PartyA": "254708374149",

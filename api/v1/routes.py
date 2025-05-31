@@ -49,6 +49,21 @@ import asyncio
 from typing import Annotated
 from datetime import datetime
 
+from pydantic import PositiveInt, EmailStr, BaseModel, constr, Field
+from uuid import uuid4
+
+import asyncio
+from typing import Annotated, Optional
+from datetime import datetime, date
+from users.forms import CustomUserCreationForm, CustomUserUpdateForm
+from django.http import HttpRequest
+from django.http.request import HttpRequest as DjangoRequest
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.views import View
+from asgiref.sync import sync_to_async
+from enum import Enum
 router = APIRouter(prefix="/v1", tags=["v1"])
 
 
@@ -764,3 +779,99 @@ def send_mpesa_popup_to(
 
     send_popup(popup_to.phone_number, popup_to.amount)
     return Feedback(detail="M-pesa popup sent successfully.")
+
+
+class UserGender(str, Enum):
+    MALE = "M"
+    FEMALE = "F"
+    OTHER = "O"
+
+
+class UserRole(str, Enum):
+    PATIENT = "Patient"
+    NURSE = "Nurse"
+    DOCTOR = "Doctor"
+    ADMIN = "Admin"
+
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[Annotated[str, Field(pattern=r"^\+?1?\d{9,15}$")]] = None
+    date_of_birth: Optional[date] = None
+    location: Optional[str] = None
+
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone_number: Optional[Annotated[str, Field(pattern=r"^\+?1?\d{9,15}$")]] = None
+    location: Optional[str] = None
+
+
+@router.post("/user/create", name="Create new user")
+async def create_user(user_data: UserCreate):
+    form_data = {
+        "username": user_data.username,
+        "password": user_data.password,
+        "email": user_data.email,
+        "first_name": user_data.first_name,
+        "last_name": user_data.last_name,
+        "phone_number": user_data.phone_number,
+        "date_of_birth": user_data.date_of_birth,
+        "location": user_data.location
+    }
+
+    @sync_to_async
+    def create_user_sync():
+        form = CustomUserCreationForm(form_data)
+        if form.is_valid():
+            user = form.save()
+            return {
+                "status": "success",
+                "message": "User created successfully",
+                "data": {
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                        "phone_number": user.phone_number,
+                        "date_of_birth": user.date_of_birth,
+                        "location": user.location
+                    }
+                }
+            }
+        return {
+            "status": "error",
+            "message": "Invalid form data",
+            "errors": form.errors
+        }, status.HTTP_400_BAD_REQUEST
+
+    return await create_user_sync()
+
+
+from fastapi import UploadFile, File, HTTPException
+from services.model_service import ModelService
+from models.response import PredictionResult
+
+# 定义类别标签
+CLASS_LABELS = ["新冠肺炎", "肺不透明", "正常", "病毒性肺炎"]
+
+# 初始化ModelService
+model_path = "model_pth/best.pth"
+model_service = ModelService(model_path=model_path, class_labels=CLASS_LABELS)
+@router.post("/predict/", response_model=PredictionResult)
+async def predict(file: UploadFile = File(...)):
+    if file.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(status_code=400, detail="仅支持JPEG或PNG格式图片")
+    try:
+        label, confidence_scores = model_service.predict(file.file)
+        return PredictionResult(predicted_label=label, confidence_scores=confidence_scores)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
