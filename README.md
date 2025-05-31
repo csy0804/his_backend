@@ -7,7 +7,6 @@ Follow these steps to set up the project:
 
 ```sh
 git clone https://github.com/csy0804/his_backend.git
-cd hospital-management-system/backend
 
 #根据需要选择是否启用虚拟环境
 pip install virtualenv # Incase it's not installed
